@@ -125,11 +125,14 @@ await link.open();
 ```
 
 - The same handlers serve an instrument over any connection. A handler set can also be made once as an `AstmRouter` and given to several links, or to a `TcpServer`.
-- ASTM has no message type, so a filter is a message kind read from the records: `'query'` (a Q record), `'result'` (R records), `'order'` (O records with no R), `'any'`, or a function. Handlers run in order, as in hl7v2's router: `use(filter, handler, priority?)`, and `next` for three-argument handlers.
+- ASTM has no message type, so a filter is a message kind read from the records: `'query'` (a Q record), `'result'` (R records), `'order'` (O records with no R), `'other'`, a list of kinds, `'any'`, or a function of the request. Handlers run in order, as in hl7v2's router: `use(filter, handler, priority?)`, lower priorities first, then in the order added.
+- A handler with two arguments runs, and the next one after it. A handler with three runs the next only when it calls `next()` before its promise settles; `next(error)` fails the request.
+- A router added to another, or to a link, is read at each message, so handlers added to it later serve the links it was given to.
 - ASTM has no application acknowledgment. When a handler fails, the link has already ACKed the frames, so the failure is reported through an `error` event and nothing goes back to the instrument.
-- **Queries:** when the handler sets `res.message`, the answer is sent as soon as the link is neutral. Instruments wait for the answer only for their own time limit, so `queryTimeout` bounds the handler. When the handler sets no answer or runs out of time, the default answer is a header and an L record with termination code `I` (no information available). An option can replace that default.
+- **Answers:** a message a handler sets in `res.message` is sent back as a new transfer, as soon as the link is neutral, whatever kind of message it answers.
+- **Queries:** instruments wait for the answer only for their own time limit, so `queryTimeout` (default 30 s) bounds the handlers. When a handler took the query but set no answer, failed, or ran out of time, the default answer goes out: a header and an L record with termination code `I` (no information available). The `defaultQueryAnswer` option replaces it. A query that no handler takes gets no answer, so that an application answering from the `message` event is not answered over.
 - **Sending orders unasked:** for instruments that take orders without a query, `link.send(message)` sends one.
-- **Instrument role:** `role: 'instrument'` and `link.query(message)` send a Q message and wait for the answer. Over a `MemoryConnection` pair, this makes an instrument simulator for tests and for trying out an LIS.
+- **Instrument role:** `role: 'instrument'` and `link.query(message)` send a Q message and resolve with the next message received, the answer. It fails after `queryTimeout`, or when the connection closes. Over a `MemoryConnection` pair, this makes an instrument simulator for tests and for trying out an LIS.
 
 ## Testing
 

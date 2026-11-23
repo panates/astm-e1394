@@ -5,7 +5,13 @@ import {
   type Server,
   type Socket,
 } from 'node:net';
-import { AstmLink, type AstmLinkOptions } from '@astm-e1394/core';
+import {
+  type AstmHandler,
+  AstmLink,
+  type AstmLinkOptions,
+  type AstmMessageFilter,
+  AstmRouter,
+} from '@astm-e1394/core';
 import type { TcpSocketOptions } from './tcp-connection.js';
 import { TcpSocketConnection } from './tcp-socket-connection.js';
 
@@ -27,13 +33,16 @@ export interface TcpServerEvents {
 /**
  * Listens for instruments that connect to the LIS. Each socket it accepts
  * becomes a TcpSocketConnection with an AstmLink of its own, made from the
- * options given once, and is emitted as 'link'. A link leaves the server's
- * list when its connection closes.
+ * options given once, and is emitted as 'link'. The handlers added with
+ * use() serve every link. A link leaves the server's list when its
+ * connection closes.
  */
 export class TcpServer extends EventEmitter<TcpServerEvents> {
   readonly options: Readonly<TcpServerOptions>;
   protected _server: Server;
   protected _links = new Set<AstmLink>();
+  /** The handlers shared by every link */
+  readonly router = new AstmRouter();
 
   constructor(options?: TcpServerOptions) {
     super();
@@ -46,6 +55,22 @@ export class TcpServer extends EventEmitter<TcpServerEvents> {
       if (this.listenerCount('error')) this.emit('error', err);
     });
     this._server.on('close', () => this.emit('close'));
+  }
+
+  /**
+   * Adds a handler, or a router, shared by every link - or, given a filter
+   * first, for the messages it matches (see AstmRouter.use). Handlers added
+   * later serve the links already open too.
+   */
+  use(handler: AstmHandler | AstmRouter, priority?: number): this;
+  use(
+    filter: AstmMessageFilter,
+    handler: AstmHandler | AstmRouter,
+    priority?: number,
+  ): this;
+  use(...args: any[]): this {
+    (this.router.use as (...a: any[]) => AstmRouter)(...args);
+    return this;
   }
 
   /** The links of the connections open now */
@@ -90,6 +115,7 @@ export class TcpServer extends EventEmitter<TcpServerEvents> {
   protected _accept(socket: Socket) {
     const connection = new TcpSocketConnection(socket, this.options);
     const link = new AstmLink(connection, this.options.link);
+    link.use(this.router);
     this._links.add(link);
     link.once('close', () => this._links.delete(link));
     this.emit('link', link);

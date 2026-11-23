@@ -16,6 +16,8 @@ export enum AstmLinkErrorCode {
   IncompleteRecord = 'INCOMPLETE_RECORD',
   /** The records of a transfer are not a message the core package reads */
   InvalidMessage = 'INVALID_MESSAGE',
+  /** A query got no answer in time: from the handlers, or from the other side */
+  QueryTimeout = 'QUERY_TIMEOUT',
 }
 
 export class AstmLinkError extends Error {

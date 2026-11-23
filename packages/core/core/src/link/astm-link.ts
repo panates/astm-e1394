@@ -4,6 +4,14 @@ import iconv from 'iconv-lite';
 import { AstmMessage } from '../astm-message.js';
 import type { AstmConnection } from './astm-connection.js';
 import { AstmLinkError, AstmLinkErrorCode } from './astm-link-error.js';
+import {
+  type AstmHandler,
+  type AstmMessageFilter,
+  type AstmRequest,
+  type AstmResponse,
+  AstmRouter,
+  messageKind,
+} from './astm-router.js';
 import { ACK, ENQ, EOT, NAK } from './control-chars.js';
 import {
   type AstmFrame,
@@ -68,6 +76,18 @@ export interface AstmLinkOptions {
    * frames are left. Default 'ignore'.
    */
   receiverInterrupt?: 'ignore' | 'stop';
+  /**
+   * The time limit of a query. A host's handlers have this long to answer
+   * one; after it, the default answer goes out. An instrument's query()
+   * waits this long for the answer. Default 30000 ms.
+   */
+  queryTimeout?: number;
+  /**
+   * The answer to a query that the handlers answered with nothing, or not
+   * in time, or failed on. Default: a header and an L record with
+   * termination code I (no information available).
+   */
+  defaultQueryAnswer?: (req: AstmRequest) => AstmMessage | string;
 }
 
 export interface AstmLinkEvents {
@@ -102,7 +122,14 @@ const DEFAULTS = {
   ackDelay: 0,
   frameDelay: 0,
   messageDelay: 0,
+  queryTimeout: 30000,
 };
+
+interface Answer {
+  resolve: (message: AstmMessage) => void;
+  reject: (e: Error) => void;
+  timer?: NodeJS.Timeout;
+}
 
 /**
  * The E1381 / LIS1-A low-level protocol over a connection: establishment
@@ -127,6 +154,10 @@ export class AstmLink extends EventEmitter<AstmLinkEvents> {
   protected _lastNumber = -1;
   protected _received: Buffer[] = [];
   protected _partial: Buffer[] = [];
+  /** Queries sent with query(), waiting for their answers in order */
+  protected _answers: Answer[] = [];
+  /** The handlers of the messages this link receives */
+  readonly router = new AstmRouter();
 
   constructor(connection: AstmConnection, options?: AstmLinkOptions) {
     super();
@@ -179,6 +210,54 @@ export class AstmLink extends EventEmitter<AstmLinkEvents> {
     });
   }
 
+  /**
+   * Adds a handler, or a router, for the messages this link receives - or,
+   * given a filter first, for those it matches (see AstmRouter.use). When a
+   * handler sets res.message, that message is sent back. A query handled
+   * with no answer gets the default answer (see defaultQueryAnswer).
+   */
+  use(handler: AstmHandler | AstmRouter, priority?: number): this;
+  use(
+    filter: AstmMessageFilter,
+    handler: AstmHandler | AstmRouter,
+    priority?: number,
+  ): this;
+  use(...args: any[]): this {
+    (this.router.use as (...a: any[]) => AstmRouter)(...args);
+    return this;
+  }
+
+  /**
+   * Sends a query and resolves with the next message received after it: the
+   * answer. Rejects when the query cannot be sent, or no answer comes within
+   * the timeout (default: the queryTimeout option). For the instrument role,
+   * and for an instrument simulator.
+   */
+  query(
+    message: AstmMessage | string,
+    options?: { timeout?: number },
+  ): Promise<AstmMessage> {
+    return this.send(message).then(
+      () =>
+        new Promise<AstmMessage>((resolve, reject) => {
+          const answer: Answer = { resolve, reject };
+          answer.timer = setTimeout(
+            () => {
+              this._answers = this._answers.filter(a => a !== answer);
+              reject(
+                new AstmLinkError(
+                  'No answer to the query in time',
+                  AstmLinkErrorCode.QueryTimeout,
+                ),
+              );
+            },
+            options?.timeout ?? this._opt('queryTimeout'),
+          );
+          this._answers.push(answer);
+        }),
+    );
+  }
+
   /* ------------------------------------------------------------ events */
 
   protected _onOpen() {
@@ -210,6 +289,17 @@ export class AstmLink extends EventEmitter<AstmLinkEvents> {
       );
     }
     this._resetReceive();
+    const answers = this._answers;
+    this._answers = [];
+    for (const answer of answers) {
+      clearTimeout(answer.timer);
+      answer.reject(
+        new AstmLinkError(
+          'The connection closed before the answer to the query',
+          AstmLinkErrorCode.Closed,
+        ),
+      );
+    }
     this._setState('closed');
     this.emit('close');
   }
@@ -472,7 +562,83 @@ export class AstmLink extends EventEmitter<AstmLinkEvents> {
       this._emitError(err);
       return;
     }
-    for (const message of messages) this.emit('message', message);
+    for (const message of messages) {
+      this.emit('message', message);
+      this._route(message);
+    }
+  }
+
+  /* ------------------------------------------------------- application */
+
+  /** Gives a message to the query waiting for it, or to the handlers */
+  protected _route(message: AstmMessage) {
+    const answer = this._answers.shift();
+    if (answer) {
+      clearTimeout(answer.timer);
+      answer.resolve(message);
+      return;
+    }
+    if (this.router.isEmpty) return;
+    const req: AstmRequest = {
+      link: this,
+      message,
+      kind: messageKind(message),
+    };
+    this._handle(req, {}).catch(e => this._emitError(e));
+  }
+
+  protected async _handle(req: AstmRequest, res: AstmResponse) {
+    const isQuery = req.kind === 'query';
+    let ran = false;
+    let timedOut = false;
+    let timer: NodeJS.Timeout | undefined;
+    const handling = this.router.handle(req, res).then(r => {
+      ran = r;
+    });
+    try {
+      if (isQuery) {
+        const timeout = new Promise<void>(resolve => {
+          timer = setTimeout(() => {
+            timedOut = true;
+            resolve();
+          }, this._opt('queryTimeout'));
+        });
+        await Promise.race([handling, timeout]);
+      } else await handling;
+    } catch (e) {
+      ran = true;
+      this._emitError(e instanceof Error ? e : new Error(String(e)));
+    } finally {
+      clearTimeout(timer);
+    }
+    let answer: AstmMessage | string | undefined;
+    if (timedOut) {
+      ran = true;
+      handling.catch(e =>
+        this._emitError(e instanceof Error ? e : new Error(String(e))),
+      );
+      this._warn(
+        'The handlers did not answer the query in time; the default answer is sent',
+        AstmLinkErrorCode.QueryTimeout,
+      );
+    } else answer = res.message;
+    if (!answer && isQuery && ran) answer = this._defaultAnswer(req);
+    if (answer) await this.send(answer);
+  }
+
+  protected _defaultAnswer(req: AstmRequest): AstmMessage | string {
+    if (this.options.defaultQueryAnswer) {
+      return this.options.defaultQueryAnswer(req);
+    }
+    const query = req.message;
+    const answer = new AstmMessage(query.dictionary);
+    answer.fieldDelimiter = query.fieldDelimiter;
+    answer.repeatDelimiter = query.repeatDelimiter;
+    answer.componentDelimiter = query.componentDelimiter;
+    answer.escapeCharacter = query.escapeCharacter;
+    answer.addRecord('L');
+    answer.set('L-3', 'I');
+    return answer;
   }
 
   protected _resetReceive() {

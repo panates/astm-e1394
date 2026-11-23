@@ -11,6 +11,7 @@ export * from './constants.js';
 export * from './link/astm-connection.js';
 export * from './link/astm-link.js';
 export * from './link/astm-link-error.js';
+export * from './link/astm-router.js';
 export { ACK, ENQ, EOT, ETB, ETX, NAK, STX } from './link/control-chars.js';
 export * from './link/frame.js';
 export * from './link/memory-connection.js';

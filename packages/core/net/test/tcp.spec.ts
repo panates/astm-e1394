@@ -218,6 +218,21 @@ describe('TcpServer', () => {
     expect((await back)[0].get('P-4')).toBe('PAT001');
   });
 
+  it('serves every link with the handlers added to it', async () => {
+    const { client: instrument } = await connectInstrument();
+    /* Added after the link was made: it serves that link too */
+    const handled = new Promise<string>(resolve =>
+      server.use('result', req => resolve(req.message.get('R-4'))),
+    );
+    server.use('query', (_req, res) => {
+      res.message = RESULT;
+    });
+    await instrument.send(RESULT);
+    expect(await handled).toBe('5.4');
+    const answer = await instrument.query('H|\\^&\rQ|1|^SPEC001||ALL\rL|1|N');
+    expect(answer.get('P-4')).toBe('PAT001');
+  });
+
   it('drops a link when its connection closes', async () => {
     const { client: instrument, link } = await connectInstrument();
     const closed = once(link, 'close');
