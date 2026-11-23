@@ -41,3 +41,7 @@ const ours = dictionary.extend({
   tables: { AbnormalFlag: { values: { '*': 'Instrument flag' } } },
 });
 ```
+
+## License
+
+[MIT](https://github.com/panates/astm-e1394/blob/main/LICENSE)
