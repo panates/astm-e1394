@@ -209,7 +209,7 @@ importers:
         specifier: workspace:^
         version: link:../dictionary
       iconv-lite:
-        specifier: ^0.7.0
+        specifier: ^0.7.3
         version: 0.7.3
     devDependencies:
       '@sinonjs/fake-timers':

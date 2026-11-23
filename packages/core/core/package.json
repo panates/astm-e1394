@@ -25,7 +25,7 @@
   },
   "dependencies": {
     "@astm-e1394/dictionary": "workspace:^",
-    "iconv-lite": "^0.7.0"
+    "iconv-lite": "^0.7.3"
   },
   "devDependencies": {
     "@sinonjs/fake-timers": "^15.5.0",
