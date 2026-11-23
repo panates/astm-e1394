@@ -46,8 +46,8 @@ interface AstmConnection extends EventEmitter {
 ```
 
 - **`TcpClientConnection`** (`@astm-e1394/net`): connects to an instrument, and reconnects after a delay when the connection drops (`reconnectDelay`, 0 to turn reconnecting off). A serial-to-TCP converter (Moxa and the like) is reached this way too.
-- **`SerialConnection`** (`@astm-e1394/serial`): uses the `serialport` package, a dependency of that package only. Options: `path`, `baudRate` (default 9600), `dataBits`, `parity`, `stopBits`, `rtscts`, `xonxoff`. It opens the port again after `reconnectDelay` when the port closes on its own, such as a USB adapter unplugged, as `TcpClientConnection` reconnects.
-- **`TcpSocketConnection`** (`@astm-e1394/net`): one socket that a `TcpServer` accepted. It is open when it is made, and does not reconnect.
+- **`SerialConnection`** (`@astm-e1394/serial`): uses the `serialport` package, a dependency of that package only. Options: `path`, `baudRate` (default 9600), `dataBits`, `parity`, `stopBits`, `rtscts`, `xonxoff`. It opens the port again after `reconnectDelay` when the port closes on its own, such as a USB adapter unplugged, as `TcpClientConnection` reconnects. Given a port made elsewhere instead of options, it uses that port as it is: it opens it when it is closed, passes on the port's own events, and never makes another port or opens it again on its own.
+- **`TcpSocketConnection`** (`@astm-e1394/net`): a socket made elsewhere, used as it is: one a `TcpServer` accepted, or one the application connected or is still connecting. `open()` waits for a socket still connecting. It does not reconnect.
 - **`MemoryConnection`** (`@astm-e1394/core`): `MemoryConnection.pair()` gives two connected ends, for tests and for an instrument simulator in the same process.
 - **Your own:** any class that implements the interface, such as a USB driver or a gateway, works with `AstmLink` unchanged.
 

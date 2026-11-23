@@ -25,9 +25,12 @@ export interface SerialConnectionOptions {
   reconnectDelay?: number;
 }
 
-/** What SerialConnection needs of a port: SerialPort, or a mock in tests */
+/** What SerialConnection needs of a port: a SerialPort, or a mock in tests */
 export interface SerialPortLike extends EventEmitter {
   readonly isOpen: boolean;
+  /** True while an open is in progress, as SerialPort has it */
+  readonly opening?: boolean;
+  readonly path?: string;
   open(callback: (err: Error | null) => void): void;
   close(callback?: (err: Error | null) => void): void;
   write(data: Buffer): boolean;
@@ -36,6 +39,12 @@ export interface SerialPortLike extends EventEmitter {
 
 /**
  * A serial port to an instrument, through the serialport package.
+ *
+ * Given options, the connection makes the port and opens it. Given a port
+ * made elsewhere - a SerialPort, open or not - it uses that port as it is:
+ * open() opens it when it is closed, the port's own events are passed on,
+ * and the connection never makes another port or opens it again on its
+ * own.
  *
  * open() resolves once the port is open. When the first attempt fails it
  * rejects; with reopening on, the connection keeps trying in the background
@@ -53,11 +62,27 @@ export class SerialConnection
   protected _wanted = false;
   protected _opening?: Promise<void>;
   protected _reconnectTimer?: NodeJS.Timeout;
+  /** The port given to the constructor, used as it is */
+  protected _given?: SerialPortLike;
 
-  constructor(options: SerialConnectionOptions) {
+  constructor(options: SerialConnectionOptions);
+  constructor(port: SerialPortLike);
+  constructor(arg: SerialConnectionOptions | SerialPortLike) {
     super();
-    this.options = { ...options };
-    this.description = `serial:${options.path}`;
+    if (isPort(arg)) {
+      this._given = arg;
+      this.options = { path: arg.path || '', reconnectDelay: 0 };
+      this.description = `serial:${arg.path || 'port'}`;
+      this._attachGiven(arg);
+      return;
+    }
+    this.options = { ...arg };
+    this.description = `serial:${arg.path}`;
+  }
+
+  /** The port in use, while there is one; a given port always */
+  get port(): SerialPortLike | undefined {
+    return this._port;
   }
 
   get isOpen(): boolean {
@@ -65,6 +90,7 @@ export class SerialConnection
   }
 
   get reconnectDelay(): number {
+    if (this._given) return 0;
     return this.options.reconnectDelay ?? 5000;
   }
 
@@ -123,6 +149,7 @@ export class SerialConnection
 
   protected _open(): Promise<void> {
     if (this._opening) return this._opening;
+    if (this._given) return this._openGiven(this._given);
     const promise = new Promise<void>((resolve, reject) => {
       const port = this._createPort();
       port.open(err => {
@@ -143,6 +170,41 @@ export class SerialConnection
     };
     promise.then(done, done);
     return promise;
+  }
+
+  /** A given port: its 'open' event becomes the connection's */
+  protected _openGiven(port: SerialPortLike): Promise<void> {
+    const promise = new Promise<void>((resolve, reject) => {
+      if (port.opening) {
+        const onError = (err: Error) => {
+          port.removeListener('open', onOpen);
+          reject(err);
+        };
+        const onOpen = () => {
+          port.removeListener('error', onError);
+          resolve();
+        };
+        port.once('open', onOpen);
+        port.once('error', onError);
+        return;
+      }
+      port.open(err => (err ? reject(err) : resolve()));
+    });
+    this._opening = promise;
+    const done = () => {
+      if (this._opening === promise) this._opening = undefined;
+    };
+    promise.then(done, done);
+    return promise;
+  }
+
+  /** A given port is the connection's for good: its events are passed on */
+  protected _attachGiven(port: SerialPortLike) {
+    this._port = port;
+    port.on('open', () => this.emit('open'));
+    port.on('data', (data: Buffer) => this.emit('data', data));
+    port.on('error', (err: Error) => this._emitError(err));
+    port.on('close', () => this.emit('close'));
   }
 
   protected _attach(port: SerialPortLike) {
@@ -179,4 +241,10 @@ export class SerialConnection
   protected _emitError(error: Error) {
     if (this.listenerCount('error')) this.emit('error', error);
   }
+}
+
+function isPort(
+  arg: SerialConnectionOptions | SerialPortLike,
+): arg is SerialPortLike {
+  return typeof (arg as SerialPortLike).open === 'function';
 }

@@ -157,6 +157,77 @@ describe('SerialConnection', () => {
     await expect(conn.write(Buffer.from('x'))).rejects.toThrow(/not open/);
   });
 
+  describe('given a port', () => {
+    const makePort = () =>
+      new SerialPortMock({ path: PATH, baudRate: 9600, autoOpen: false });
+    let given: SerialConnection | undefined;
+    afterEach(async () => {
+      await given?.close();
+      given = undefined;
+    });
+
+    it('uses a port already open', async () => {
+      const port = makePort();
+      await new Promise<void>((resolve, reject) =>
+        port.open(e => (e ? reject(e) : resolve())),
+      );
+      given = new SerialConnection(port);
+      expect(given.description).toBe(`serial:${PATH}`);
+      expect(given.isOpen).toBe(true);
+      expect(given.port).toBe(port);
+      await given.open();
+      await given.write(Buffer.from([0x05]));
+      expect([...port.port!.recording]).toEqual([0x05]);
+      const data = once(given, 'data');
+      port.port!.emitData(Buffer.from([0x06]));
+      expect([...(await data)[0]]).toEqual([0x06]);
+    });
+
+    it('opens a closed port, and passes on what the port does', async () => {
+      const port = makePort();
+      given = new SerialConnection(port);
+      expect(given.isOpen).toBe(false);
+      const opened = once(given, 'open');
+      await given.open();
+      await opened;
+      expect(port.isOpen).toBe(true);
+      /* Closed and opened again by its owner */
+      const closed = once(given, 'close');
+      await new Promise(resolve => port.close(resolve));
+      await closed;
+      const reopened = once(given, 'open');
+      port.open();
+      await reopened;
+      expect(given.isOpen).toBe(true);
+    });
+
+    it('waits for a port its owner is opening', async () => {
+      const port = makePort();
+      port.open();
+      given = new SerialConnection(port);
+      await given.open();
+      expect(given.isOpen).toBe(true);
+    });
+
+    it('does not open the port again on its own', async () => {
+      const port = makePort();
+      given = new SerialConnection(port);
+      expect(given.reconnectDelay).toBe(0);
+      await given.open();
+      const closed = once(given, 'close');
+      port._disconnected(new Error('disconnected'));
+      await closed;
+      await new Promise(resolve => setTimeout(resolve, 50));
+      expect(given.isOpen).toBe(false);
+    });
+
+    it('rejects open() when the port cannot open', async () => {
+      SerialPortMock.binding.reset();
+      given = new SerialConnection(makePort());
+      await expect(given.open()).rejects.toThrow();
+    });
+  });
+
   it('carries a link: a bare message from the instrument arrives whole', async () => {
     conn = connection();
     const link = new AstmLink(conn, { framing: 'none' });

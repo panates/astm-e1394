@@ -5,9 +5,14 @@ import {
   type Server,
   type Socket,
 } from 'node:net';
+import { connect } from 'node:net';
 import { AstmLink, type AstmMessage } from '@astm-e1394/core';
 import { expect } from 'expect';
-import { TcpClientConnection, TcpServer } from '../src/index.js';
+import {
+  TcpClientConnection,
+  TcpServer,
+  TcpSocketConnection,
+} from '../src/index.js';
 
 const RESULT = [
   'H|\\^&|||ANALYZER|||||||P|LIS2-A2|20250102103000',
@@ -171,6 +176,48 @@ describe('TcpClientConnection', () => {
   it('refuses to write while closed', async () => {
     conn = new TcpClientConnection({ host: HOST, port: 1 });
     await expect(conn.write(Buffer.from('x'))).rejects.toThrow(/not open/);
+  });
+});
+
+describe('TcpSocketConnection', () => {
+  it('uses a socket that is still connecting, and opens with it', async () => {
+    const raw = await rawServer();
+    const conn = new TcpSocketConnection(connect(raw.port, HOST));
+    expect(conn.isOpen).toBe(false);
+    const opened = once(conn, 'open');
+    await conn.open();
+    await opened;
+    expect(conn.isOpen).toBe(true);
+    expect(conn.description).toBe(`tcp://${HOST}:${raw.port}`);
+    await until(() => raw.sockets.length === 1);
+    const received = once(raw.sockets[0], 'data');
+    await conn.write(Buffer.from([0x05]));
+    expect([...(await received)[0]]).toEqual([0x05]);
+    await conn.close();
+    expect(conn.isOpen).toBe(false);
+    await raw.close();
+  });
+
+  it('uses a socket already connected', async () => {
+    const raw = await rawServer();
+    const socket = connect(raw.port, HOST);
+    await once(socket, 'connect');
+    const conn = new TcpSocketConnection(socket);
+    expect(conn.isOpen).toBe(true);
+    await conn.open();
+    const link = new AstmLink(conn);
+    expect(link.state).toBe('idle');
+    await link.close();
+    await raw.close();
+  });
+
+  it('rejects open() when the socket cannot connect', async () => {
+    const port = await freePort();
+    const socket = connect(port, HOST);
+    socket.on('error', () => undefined);
+    const conn = new TcpSocketConnection(socket);
+    await expect(conn.open()).rejects.toThrow();
+    await expect(conn.open()).rejects.toThrow(/closed/);
   });
 });
 
