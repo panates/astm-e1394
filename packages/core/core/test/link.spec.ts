@@ -1,8 +1,8 @@
-import { AstmMessage } from '@astm-e1394/core';
 import { expect } from 'expect';
 import {
   AstmLink,
   AstmLinkErrorCode,
+  AstmMessage,
   encodeFrame,
   MemoryConnection,
 } from '../src/index.js';
@@ -15,7 +15,7 @@ import {
   installClock,
   linkWithPeer,
   NAK,
-} from './support.js';
+} from './link-support.js';
 
 const RESULT = [
   'H|\\^&|||ANALYZER|||||||P|LIS2-A2|20250102103000',

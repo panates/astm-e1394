@@ -1,0 +1,30 @@
+{
+  "name": "@astm-e1394/serial",
+  "description": "Connects to laboratory instruments over serial ports for ASTM E1394 messages.",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/panates/astm-e1394.git",
+    "directory": "packages/core/serial"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@astm-e1394/core": "workspace:^",
+    "serialport": "^13.0.0"
+  }
+}

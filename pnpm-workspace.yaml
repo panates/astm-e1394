@@ -8,8 +8,8 @@ minimumReleaseAge: 0
 # Packages with an install script: true lets pnpm run it, false blocks it. The compiler the tests
 # run on and eslint's module resolver are listed in every repository; the value is the repository's.
 allowBuilds:
-  # serialport's native binding: the net package loads it only for a serial connection,
-  # which its tests do not open
+  # serialport's native binding (the serial package): it ships prebuilt binaries for the
+  # common platforms, so its install script does not need to compile it
   '@serialport/bindings-cpp': false
   '@swc/core': true
   unrs-resolver: true

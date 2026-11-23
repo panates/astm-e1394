@@ -7,10 +7,15 @@ laboratory information systems exchange.
 
 A pnpm monorepo in the grouped layout, released with rman.
 
-- `packages/core/core` (`@astm-e1394/core`): parse, build and serialize messages and records.
+- `packages/core/core` (`@astm-e1394/core`): parse, build and serialize messages and records,
+  and run the E1381 (LIS1-A) protocol (`AstmLink`) over the `AstmConnection` interface.
 - `packages/core/dictionary` (`@astm-e1394/dictionary`): record and field definitions.
-- `packages/core/net` (`@astm-e1394/net`): the E1381 (LIS1-A) protocol over connections; see
-  `docs/decisions/net-package.md`.
+- `packages/core/net` (`@astm-e1394/net`): TCP connections and the TCP server.
+- `packages/core/serial` (`@astm-e1394/serial`): the serial port connection.
+
+Core holds everything with no outside dependency: the protocol, the connection interface and
+`MemoryConnection`. A way of connecting that needs a Node.js module or a package (`node:net`,
+`serialport`) is a package of its own. See `docs/decisions/net-package.md`.
 - `support/`: scripts that build or check the repository, not published.
 
 The repository has one group, `core`, and every package goes into it: all packages release

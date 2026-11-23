@@ -1,10 +1,10 @@
 import { EventEmitter } from 'node:events';
-import type { AstmDictionary } from '@astm-e1394/core';
-import { AstmMessage } from '@astm-e1394/core';
+import type { AstmDictionary } from '@astm-e1394/dictionary';
 import iconv from 'iconv-lite';
+import { AstmMessage } from '../astm-message.js';
 import type { AstmConnection } from './astm-connection.js';
 import { AstmLinkError, AstmLinkErrorCode } from './astm-link-error.js';
-import { ACK, ENQ, EOT, NAK } from './constants.js';
+import { ACK, ENQ, EOT, NAK } from './control-chars.js';
 import {
   type AstmFrame,
   encodeFrame,
@@ -12,7 +12,7 @@ import {
   type FrameToken,
   MAX_FRAME_TEXT,
   recordsToFrameTexts,
-} from './e1381/frame.js';
+} from './frame.js';
 
 /**
  * Where the link is in the E1381 protocol:

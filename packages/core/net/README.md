@@ -1,6 +1,6 @@
 # @astm-e1394/net
 
-ASTM E1381 (LIS1-A) communication with laboratory instruments over TCP and serial ports.
+Connects to laboratory instruments over TCP for ASTM E1394 messages.
 
 [![NPM Version][npm-image]][npm-url]
 [![NPM Downloads][downloads-image]][downloads-url]

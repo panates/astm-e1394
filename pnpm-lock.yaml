@@ -212,6 +212,9 @@ importers:
         specifier: ^0.7.0
         version: 0.7.3
     devDependencies:
+      '@sinonjs/fake-timers':
+        specifier: ^15.5.0
+        version: 15.5.0
       expect:
         specifier: ^30.5.2
         version: 30.5.2
@@ -227,19 +230,15 @@ importers:
       '@astm-e1394/core':
         specifier: workspace:^
         version: link:../core
-      iconv-lite:
-        specifier: ^0.7.3
-        version: 0.7.3
+
+  packages/core/serial:
+    dependencies:
+      '@astm-e1394/core':
+        specifier: workspace:^
+        version: link:../core
       serialport:
-        specifier: '>=12'
+        specifier: ^13.0.0
         version: 13.0.0(supports-color@8.1.1)
-    devDependencies:
-      '@sinonjs/fake-timers':
-        specifier: ^15.5.0
-        version: 15.5.0
-      expect:
-        specifier: ^30.5.2
-        version: 30.5.2
 
 packages:
 
@@ -2356,7 +2355,7 @@ snapshots:
   '@serialport/binding-mock@10.2.2(supports-color@8.1.1)':
     dependencies:
       '@serialport/bindings-interface': 1.2.2
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.0(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 

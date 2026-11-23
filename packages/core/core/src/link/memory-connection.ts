@@ -2,7 +2,7 @@ import { EventEmitter } from 'node:events';
 import type {
   AstmConnection,
   AstmConnectionEvents,
-} from '../astm-connection.js';
+} from './astm-connection.js';
 
 /**
  * One end of an in-memory connection: what one end writes, the other

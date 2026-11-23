@@ -1,6 +1,6 @@
 {
   "name": "@astm-e1394/core",
-  "description": "Parses, builds and serializes ASTM E1394 (LIS2-A2) messages and records.",
+  "description": "Parses, builds and serializes ASTM E1394 (LIS2-A2) messages, and runs the ASTM E1381 (LIS1-A) protocol over any connection.",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -28,6 +28,7 @@
     "iconv-lite": "^0.7.0"
   },
   "devDependencies": {
+    "@sinonjs/fake-timers": "^15.5.0",
     "expect": "^30.5.2"
   }
 }

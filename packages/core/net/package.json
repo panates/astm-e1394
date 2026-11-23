@@ -1,6 +1,6 @@
 {
   "name": "@astm-e1394/net",
-  "description": "ASTM E1381 (LIS1-A) communication with laboratory instruments over TCP and serial ports.",
+  "description": "Connects to laboratory instruments over TCP for ASTM E1394 messages.",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -24,19 +24,6 @@
     "access": "public"
   },
   "dependencies": {
-    "@astm-e1394/core": "workspace:^",
-    "iconv-lite": "^0.7.3"
-  },
-  "peerDependencies": {
-    "serialport": ">=12"
-  },
-  "peerDependenciesMeta": {
-    "serialport": {
-      "optional": true
-    }
-  },
-  "devDependencies": {
-    "@sinonjs/fake-timers": "^15.5.0",
-    "expect": "^30.5.2"
+    "@astm-e1394/core": "workspace:^"
   }
 }

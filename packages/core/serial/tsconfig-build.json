@@ -1,0 +1,11 @@
+{
+  "extends": ["./tsconfig.json", "../../../tsconfig-build.json"],
+  "references": [
+    {
+      "path": "../dictionary/tsconfig-build.json"
+    },
+    {
+      "path": "../core/tsconfig-build.json"
+    }
+  ]
+}

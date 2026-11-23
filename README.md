@@ -20,9 +20,10 @@ ASTM E1394 (LIS2-A2) laboratory instrument message parser and serializer for Nod
 
 | Package | Description |
 | --- | --- |
-| [`@astm-e1394/core`](packages/core/core) | Parses, builds and serializes ASTM E1394 (LIS2-A2) messages and records. |
+| [`@astm-e1394/core`](packages/core/core) | Parses, builds and serializes ASTM E1394 (LIS2-A2) messages, and runs the ASTM E1381 (LIS1-A) protocol over any connection. |
 | [`@astm-e1394/dictionary`](packages/core/dictionary) | Record and field definitions of ASTM E1394 (LIS2-A2). |
-| [`@astm-e1394/net`](packages/core/net) | ASTM E1381 (LIS1-A) communication with laboratory instruments over TCP and serial ports. |
+| [`@astm-e1394/net`](packages/core/net) | Connects to laboratory instruments over TCP. |
+| [`@astm-e1394/serial`](packages/core/serial) | Connects to laboratory instruments over serial ports. |
 
 The packages are in early design and not published yet.
 

@@ -1,20 +1,31 @@
-# The net package
+# Instrument communication
 
 Status: accepted
 
-`@astm-e1394/net` exchanges ASTM E1394 messages with instruments over TCP and serial ports, using the low-level protocol of ASTM E1381 / CLSI LIS1-A. It is in the `core` group and releases with `core` and `dictionary`.
-
-The package has two parts:
+ASTM E1394 messages travel between instruments and the LIS over TCP and serial ports, using the low-level protocol of ASTM E1381 / CLSI LIS1-A. The work has two parts:
 
 - **Connections** carry bytes, and only bytes. Each way of reaching an instrument is a class that implements the `AstmConnection` interface: `TcpClientConnection`, `SerialConnection` and the others below.
 - **`AstmLink`** speaks the protocol over any connection: the E1381 state machine, frames, timers and retries, messages, and the handlers. It is written and tested once, and it does not know which connection it has.
 
+The parts are split across packages by what they depend on. All of them are in the `core` group and release together:
+
+| Package | Holds | Depends on |
+| --- | --- | --- |
+| `@astm-e1394/core` | the message model, `AstmConnection`, `AstmLink`, the frame codec, `MemoryConnection`, the handlers and the router | `dictionary`, `iconv-lite` |
+| `@astm-e1394/net` | `TcpClientConnection`, `TcpSocketConnection`, `TcpServer` | `core`, `node:net` |
+| `@astm-e1394/serial` | `SerialConnection` | `core`, `serialport` |
+
+The protocol has no outside dependency, so it is in core with the messages it carries. A way of connecting that needs a Node.js module or a package is a package of its own, and an application installs only the ones it uses.
+
 ```
- AstmLink        handlers, queries          application
-                 records <-> AstmMessage    message
-                 ENQ/ACK/NAK/EOT, frames    link (E1381)
- ─────────────── AstmConnection ───────────────────────
- TcpClientConnection | TcpSocketConnection | SerialConnection | MemoryConnection | your own
+ core     AstmLink    handlers, queries          application
+                      records <-> AstmMessage    message
+                      ENQ/ACK/NAK/EOT, frames    link (E1381)
+ ──────────────────── AstmConnection ──────────────────────────
+ core     MemoryConnection
+ net      TcpClientConnection | TcpSocketConnection | TcpServer
+ serial   SerialConnection
+ yours    any class that implements AstmConnection
 ```
 
 An instrument's settings, such as delays and framing, are options of the link, not of the connection. Moving an instrument from a COM port to TCP changes only its connection class.
@@ -34,10 +45,10 @@ interface AstmConnection extends EventEmitter {
 }
 ```
 
-- **`TcpClientConnection`:** connects to an instrument, and reconnects after a delay when the connection drops (`reconnectDelay`, 0 to turn reconnecting off). A serial-to-TCP converter (Moxa and the like) is reached this way too.
-- **`SerialConnection`:** uses the `serialport` package, an optional peer dependency loaded only when a serial connection opens. Options: `path`, `baudRate`, `dataBits`, `parity`, `stopBits`, flow control.
-- **`TcpSocketConnection`:** one socket that a `TcpServer` accepted. It is open when it is made, and does not reconnect.
-- **`MemoryConnection`:** `MemoryConnection.pair()` gives two connected ends, for tests and for an instrument simulator in the same process.
+- **`TcpClientConnection`** (`@astm-e1394/net`): connects to an instrument, and reconnects after a delay when the connection drops (`reconnectDelay`, 0 to turn reconnecting off). A serial-to-TCP converter (Moxa and the like) is reached this way too.
+- **`SerialConnection`** (`@astm-e1394/serial`): uses the `serialport` package, a dependency of that package only. Options: `path`, `baudRate`, `dataBits`, `parity`, `stopBits`, flow control.
+- **`TcpSocketConnection`** (`@astm-e1394/net`): one socket that a `TcpServer` accepted. It is open when it is made, and does not reconnect.
+- **`MemoryConnection`** (`@astm-e1394/core`): `MemoryConnection.pair()` gives two connected ends, for tests and for an instrument simulator in the same process.
 - **Your own:** any class that implements the interface, such as a USB driver or a gateway, works with `AstmLink` unchanged.
 
 ### The TCP server
@@ -92,6 +103,9 @@ The link reports what it does through events (`state`, `frame`, `send`, `receive
 ## Application layer
 
 ```typescript
+import { AstmLink } from '@astm-e1394/core';
+import { SerialConnection } from '@astm-e1394/serial';
+
 const link = new AstmLink(
   new SerialConnection({ path: 'COM3', baudRate: 9600 }),
   { role: 'host', ackDelay: 50 },
@@ -126,6 +140,6 @@ await link.open();
 ## Open questions
 
 1. Which instruments come first? Their interface manuals decide the defaults worth changing: framing over TCP, delays, encoding.
-2. Is `serialport` as an optional peer dependency acceptable? The alternative is a separate package.
+2. ~~Is `serialport` as an optional peer dependency acceptable?~~ Settled: `SerialConnection` is in its own package, `@astm-e1394/serial`, with `serialport` as a dependency.
 3. What is the default answer to a query with no orders: an L record with `I`, or P and O records with report type `Y` or `Z`?
 4. Should several messages in one transfer be sent as one? It is rare; the proposal sends one message per transfer.

@@ -1,5 +1,5 @@
 import iconv from 'iconv-lite';
-import { ACK, CR, ENQ, EOT, ETB, ETX, LF, NAK, STX } from '../constants.js';
+import { ACK, CR, ENQ, EOT, ETB, ETX, LF, NAK, STX } from './control-chars.js';
 
 const CONTROLS = new Set([ENQ, ACK, NAK, EOT]);
 
