@@ -12,7 +12,7 @@ import {
   AstmRouter,
   messageKind,
 } from './astm-router.js';
-import { ACK, ENQ, EOT, NAK } from './control-chars.js';
+import { ACK, CR, ENQ, EOT, ETB, ETX, LF, NAK, STX } from './control-chars.js';
 import {
   type AstmFrame,
   encodeFrame,
@@ -77,6 +77,22 @@ export interface AstmLinkOptions {
    */
   receiverInterrupt?: 'ignore' | 'stop';
   /**
+   * How messages travel: 'e1381', the standard's low-level protocol (ENQ,
+   * frames, ACK, EOT), or 'none' for instruments that send bare records,
+   * each ended by CR, with no handshake. In 'none' mode a message ends at
+   * its L record, or after messageEndTimeout of silence, and E1381 control
+   * characters received are dropped. Default 'e1381'.
+   */
+  framing?: 'e1381' | 'none';
+  /** With framing 'none': the silence that ends a message with no L record. Default 2000 ms. */
+  messageEndTimeout?: number;
+  /**
+   * Emits 'idle' when nothing is sent or received for this long, and again
+   * after each such period; 0 turns it off. To drop a silent connection,
+   * close it on 'idle'. Default 0.
+   */
+  idleTimeout?: number;
+  /**
    * The time limit of a query. A host's handlers have this long to answer
    * one; after it, the default answer goes out. An instrument's query()
    * waits this long for the answer. Default 30000 ms.
@@ -102,6 +118,8 @@ export interface AstmLinkEvents {
   receive: [data: Buffer];
   /** A frame or control character read */
   token: [token: FrameToken];
+  /** Nothing sent or received for idleTimeout */
+  idle: [];
   /** Something wrong the link went on after: a bad frame, a lost transfer */
   warning: [error: AstmLinkError];
   error: [error: Error];
@@ -109,6 +127,8 @@ export interface AstmLinkEvents {
 
 interface Outgoing {
   frames: AstmFrame[];
+  /** With framing 'none': the records, encoded */
+  bare?: Buffer;
   resolve: () => void;
   reject: (e: Error) => void;
 }
@@ -123,6 +143,8 @@ const DEFAULTS = {
   frameDelay: 0,
   messageDelay: 0,
   queryTimeout: 30000,
+  messageEndTimeout: 2000,
+  idleTimeout: 0,
 };
 
 interface Answer {
@@ -156,6 +178,10 @@ export class AstmLink extends EventEmitter<AstmLinkEvents> {
   protected _partial: Buffer[] = [];
   /** Queries sent with query(), waiting for their answers in order */
   protected _answers: Answer[] = [];
+  /** With framing 'none': the records received of the message so far */
+  protected _bare: Buffer[] = [];
+  protected _bareTimer?: NodeJS.Timeout;
+  protected _idleTimer?: NodeJS.Timeout;
   /** The handlers of the messages this link receives */
   readonly router = new AstmRouter();
 
@@ -167,7 +193,10 @@ export class AstmLink extends EventEmitter<AstmLinkEvents> {
     connection.on('close', () => this._onClose());
     connection.on('data', data => this._onData(data));
     connection.on('error', err => this._emitError(err));
-    if (connection.isOpen) this._setState('idle');
+    if (connection.isOpen) {
+      this._setState('idle');
+      this._touch();
+    }
   }
 
   get state(): AstmLinkState {
@@ -200,6 +229,13 @@ export class AstmLink extends EventEmitter<AstmLinkEvents> {
   send(message: AstmMessage | string): Promise<void> {
     const text = typeof message === 'string' ? message : message.toAstmString();
     const records = text.split(/\r\n?|\n/).filter(r => r);
+    if (this.options.framing === 'none') {
+      const bare = iconv.encode(records.join('\r') + '\r', this._encoding);
+      return new Promise<void>((resolve, reject) => {
+        this._queue.push({ frames: [], bare, resolve, reject });
+        this._kick();
+      });
+    }
     const frames = recordsToFrameTexts(records, {
       encoding: this.options.encoding,
       maxLength: this.options.maxFrameLength || MAX_FRAME_TEXT,
@@ -263,12 +299,15 @@ export class AstmLink extends EventEmitter<AstmLinkEvents> {
   protected _onOpen() {
     this._reader.reset();
     this._setState('idle');
+    this._touch();
     this.emit('open');
     this._kick();
   }
 
   protected _onClose() {
     this._clearTimers();
+    this._stopIdle();
+    if (this._bare.length) this._endBare();
     this._waiting = false;
     /* The message being sent fails; the rest wait for the connection to open again */
     const current = this._state === 'sending' || this._state === 'establishing';
@@ -306,6 +345,8 @@ export class AstmLink extends EventEmitter<AstmLinkEvents> {
 
   protected _onData(data: Buffer) {
     this.emit('receive', data);
+    this._touch();
+    if (this.options.framing === 'none') return this._onBareData(data);
     for (const token of this._reader.push(data)) {
       this.emit('token', token);
       try {
@@ -350,6 +391,7 @@ export class AstmLink extends EventEmitter<AstmLinkEvents> {
   /** Starts the next transfer when the link is idle and a message waits */
   protected _kick() {
     if (this._state !== 'idle' || this._waiting || !this._queue.length) return;
+    if (this.options.framing === 'none') return this._sendBare();
     this._attempts++;
     this._setState('establishing');
     this._write(Buffer.from([ENQ]));
@@ -471,7 +513,82 @@ export class AstmLink extends EventEmitter<AstmLinkEvents> {
     this._pause(this._opt('messageDelay'));
   }
 
+  /** framing 'none': the records go out as they are, with no handshake */
+  protected _sendBare() {
+    const item = this._queue[0];
+    this._setState('sending');
+    this.emit('send', item.bare!);
+    this._touch();
+    const done = (error?: Error) => {
+      /* A close in between has failed the message already */
+      if (this._state !== 'sending' || this._queue[0] !== item) return;
+      this._queue.shift();
+      this._setState('idle');
+      if (error) item.reject(error);
+      else item.resolve();
+      this._pause(this._opt('messageDelay'));
+    };
+    this.connection.write(item.bare!).then(
+      () => done(),
+      e => done(e),
+    );
+  }
+
   /* --------------------------------------------------------- receiving */
+
+  /**
+   * framing 'none': records are collected up to an L record, or until the
+   * other side falls silent
+   */
+  protected _onBareData(data: Buffer) {
+    const kept = data.filter(
+      b =>
+        b !== STX &&
+        b !== ETX &&
+        b !== ETB &&
+        b !== EOT &&
+        b !== ENQ &&
+        b !== ACK &&
+        b !== NAK,
+    );
+    if (!kept.length) return;
+    this._bare.push(Buffer.from(kept));
+    const buf = Buffer.concat(this._bare);
+    /* Where the last whole L record ends; record types and terminators are ASCII */
+    let start = 0;
+    let cut = -1;
+    for (let i = 0; i < buf.length; i++) {
+      if (buf[i] !== CR && buf[i] !== LF) continue;
+      if (
+        i > start &&
+        buf[start] === 0x4c /* L */ &&
+        (i === start + 1 || !isWordByte(buf[start + 1]))
+      ) {
+        cut = buf[i] === CR && buf[i + 1] === LF ? i + 2 : i + 1;
+      }
+      start = i + 1;
+    }
+    if (this._bareTimer) clearTimeout(this._bareTimer);
+    this._bareTimer = undefined;
+    if (cut >= 0) {
+      this._bare = cut < buf.length ? [buf.subarray(cut)] : [];
+      this._emitMessages(buf.subarray(0, cut));
+    }
+    if (this._bare.length) {
+      this._bareTimer = setTimeout(
+        () => this._endBare(),
+        this._opt('messageEndTimeout'),
+      );
+    }
+  }
+
+  protected _endBare() {
+    if (this._bareTimer) clearTimeout(this._bareTimer);
+    this._bareTimer = undefined;
+    const data = Buffer.concat(this._bare);
+    this._bare = [];
+    if (data.length) this._emitMessages(data);
+  }
 
   protected _startReceive() {
     /* The other side's ENQ is taken even during a pause before our own */
@@ -668,6 +785,7 @@ export class AstmLink extends EventEmitter<AstmLinkEvents> {
   protected _write(data: Buffer) {
     if (!this.connection.isOpen) return;
     this.emit('send', data);
+    this._touch();
     this.connection.write(data).catch(e => this._emitError(e));
   }
 
@@ -718,6 +836,23 @@ export class AstmLink extends EventEmitter<AstmLinkEvents> {
     return t;
   }
 
+  /** Traffic: the idle period starts again */
+  protected _touch() {
+    const ms = this._opt('idleTimeout');
+    if (!ms) return;
+    if (this._idleTimer) clearTimeout(this._idleTimer);
+    this._idleTimer = setTimeout(() => {
+      this._idleTimer = undefined;
+      this._touch();
+      this.emit('idle');
+    }, ms);
+  }
+
+  protected _stopIdle() {
+    if (this._idleTimer) clearTimeout(this._idleTimer);
+    this._idleTimer = undefined;
+  }
+
   protected _clearTimers() {
     for (const t of this._timers) clearTimeout(t);
     this._timers.clear();
@@ -738,4 +873,14 @@ export class AstmLink extends EventEmitter<AstmLinkEvents> {
   protected _emitError(error: Error) {
     if (this.listenerCount('error')) this.emit('error', error);
   }
+}
+
+/** A letter, a digit or _: a byte that would make "L" part of a longer word */
+function isWordByte(b: number): boolean {
+  return (
+    (b >= 0x30 && b <= 0x39) ||
+    (b >= 0x41 && b <= 0x5a) ||
+    (b >= 0x61 && b <= 0x7a) ||
+    b === 0x5f
+  );
 }

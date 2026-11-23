@@ -88,8 +88,11 @@ Instruments differ from the standard often enough that these options are part of
 - `ackDelay`: a pause before each ACK, for instruments that miss a reply sent too soon.
 - `frameDelay`: a pause between frames.
 - `messageDelay`: a pause between one transfer's EOT and the next ENQ.
-- `idleTimeout`: closes or flags a connection with no traffic.
-- `framing`: `'e1381'` (the default), or `'none'` for instruments that send bare records over TCP with no ENQ, frames or ACK. In `'none'` mode a message ends at its L record, or after `messageEndTimeout` of silence.
+- `idleTimeout`: emits `idle` when nothing is sent or received for this long, and again after each such period (off by default). An application that wants a silent connection dropped closes it on `idle`; a `TcpClientConnection` then reconnects.
+- `framing`: `'e1381'` (the default), or `'none'` for instruments that send bare records over TCP with no ENQ, frames or ACK:
+  - Records go out as they are, each ended by CR, one message after another with `messageDelay` between them.
+  - A message received ends at its L record, or after `messageEndTimeout` (default 2 s) of silence, or when the connection closes. Several messages in one chunk are cut at their L records.
+  - E1381 control characters received are dropped, for instruments that wrap bare records in some of them.
 - `checksum: 'strict' | 'lenient'`: lenient accepts a frame whose checksum is wrong, logs it and ACKs it, for an instrument known to compute it wrongly.
 
 The link reports what it does through events (`state`, `frame`, `send`, `receive`), with the raw bytes. These events are how a problem with an instrument in the field gets diagnosed.
