@@ -46,7 +46,7 @@ interface AstmConnection extends EventEmitter {
 ```
 
 - **`TcpClientConnection`** (`@astm-e1394/net`): connects to an instrument, and reconnects after a delay when the connection drops (`reconnectDelay`, 0 to turn reconnecting off). A serial-to-TCP converter (Moxa and the like) is reached this way too.
-- **`SerialConnection`** (`@astm-e1394/serial`): uses the `serialport` package, a dependency of that package only. Options: `path`, `baudRate`, `dataBits`, `parity`, `stopBits`, flow control.
+- **`SerialConnection`** (`@astm-e1394/serial`): uses the `serialport` package, a dependency of that package only. Options: `path`, `baudRate` (default 9600), `dataBits`, `parity`, `stopBits`, `rtscts`, `xonxoff`. It opens the port again after `reconnectDelay` when the port closes on its own, such as a USB adapter unplugged, as `TcpClientConnection` reconnects.
 - **`TcpSocketConnection`** (`@astm-e1394/net`): one socket that a `TcpServer` accepted. It is open when it is made, and does not reconnect.
 - **`MemoryConnection`** (`@astm-e1394/core`): `MemoryConnection.pair()` gives two connected ends, for tests and for an instrument simulator in the same process.
 - **Your own:** any class that implements the interface, such as a USB driver or a gateway, works with `AstmLink` unchanged.
@@ -141,7 +141,7 @@ await link.open();
 
 - `AstmLink` is tested over a `MemoryConnection` pair, with fake timers (`@sinonjs/fake-timers`) for the timeouts.
 - Recorded byte streams from real instruments, made up of test data only, become fixtures.
-- Each connection class gets thin tests of its own: open, write, data, close, reconnect. Serial runs against a virtual port pair where the system has one, and is skipped where it does not.
+- Each connection class gets thin tests of its own: open, write, data, close, reconnect. Serial runs against the mock binding of the `serialport` package, so it needs no port on the machine.
 
 ## Open questions
 

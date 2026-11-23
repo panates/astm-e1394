@@ -26,5 +26,8 @@
   "dependencies": {
     "@astm-e1394/core": "workspace:^",
     "serialport": "^13.0.0"
+  },
+  "devDependencies": {
+    "expect": "^30.5.2"
   }
 }

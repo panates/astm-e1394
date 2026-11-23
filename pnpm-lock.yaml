@@ -243,6 +243,10 @@ importers:
       serialport:
         specifier: ^13.0.0
         version: 13.0.0(supports-color@8.1.1)
+    devDependencies:
+      expect:
+        specifier: ^30.5.2
+        version: 30.5.2
 
 packages:
 
