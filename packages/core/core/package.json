@@ -22,5 +22,12 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "dependencies": {
+    "@astm-e1394/dictionary": "workspace:^",
+    "iconv-lite": "^0.7.0"
+  },
+  "devDependencies": {
+    "expect": "^30.5.2"
   }
 }

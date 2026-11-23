@@ -4,6 +4,14 @@
   "exclude": ["build"],
   "compilerOptions": {
     "rootDir": "src",
-    "outDir": "./build"
-  }
+    "outDir": "./build",
+    "paths": {
+      "@astm-e1394/dictionary": ["../dictionary/src/index.js"]
+    }
+  },
+  "references": [
+    {
+      "path": "../dictionary"
+    }
+  ]
 }
