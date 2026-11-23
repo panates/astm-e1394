@@ -9,11 +9,12 @@ A pnpm monorepo in the grouped layout, released with rman.
 
 - `packages/core/core` (`@astm-e1394/core`): parse, build and serialize messages and records.
 - `packages/core/dictionary` (`@astm-e1394/dictionary`): record and field definitions.
+- `packages/core/net` (`@astm-e1394/net`): the E1381 (LIS1-A) protocol over connections; see
+  `docs/decisions/net-package.md`.
 - `support/`: scripts that build or check the repository, not published.
 
 The repository has one group, `core`, and every package goes into it: all packages release
-together, under one version. The E1381 (LIS1-A) transport layer will be `packages/core/net`
-(`@astm-e1394/net`), in the same group. The standard has no versions that change its records
+together, under one version. The standard has no versions that change its records
 (E1394-97 and LIS2-A2 lay them out the same way), so there is one dictionary; an instrument's
 own fields and codes go into one made with `dictionary.extend()`, not into the package.
 

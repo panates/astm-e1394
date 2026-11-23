@@ -1,0 +1,42 @@
+{
+  "name": "@astm-e1394/net",
+  "description": "ASTM E1381 (LIS1-A) communication with laboratory instruments over TCP and serial ports.",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/panates/astm-e1394.git",
+    "directory": "packages/core/net"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@astm-e1394/core": "workspace:^",
+    "iconv-lite": "^0.7.3"
+  },
+  "peerDependencies": {
+    "serialport": ">=12"
+  },
+  "peerDependenciesMeta": {
+    "serialport": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@sinonjs/fake-timers": "^15.5.0",
+    "expect": "^30.5.2"
+  }
+}
