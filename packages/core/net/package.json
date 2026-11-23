@@ -25,5 +25,8 @@
   },
   "dependencies": {
     "@astm-e1394/core": "workspace:^"
+  },
+  "devDependencies": {
+    "expect": "^30.5.2"
   }
 }

@@ -230,6 +230,10 @@ importers:
       '@astm-e1394/core':
         specifier: workspace:^
         version: link:../core
+    devDependencies:
+      expect:
+        specifier: ^30.5.2
+        version: 30.5.2
 
   packages/core/serial:
     dependencies:
