@@ -1,0 +1,15 @@
+extends: '@panates/rman-preset'
+
+# Install, sync the lockfile and publish with pnpm.
+packageManager:
+  node: pnpm
+
+# Each group directory names its version group in its own .rmanrc.yml. The packages of one
+# group release together; the groups release independently.
+version:
+  # Bump every package in the group, not only the ones that changed.
+  cascade: group
+
+changelog:
+  # One changelog per group.
+  groupBy: group

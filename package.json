@@ -1,0 +1,34 @@
+{
+  "name": "astm-e1394",
+  "description": "ASTM E1394 (LIS2-A2) laboratory instrument message parser and serializer for Node.js.",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "packageManager": "pnpm@12.10.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "rman build",
+    "test": "mocha",
+    "citest": "c8 mocha",
+    "precitest": "rman clean",
+    "lint": "rman lint",
+    "check": "rman check",
+    "format": "rman format"
+  },
+  "devDependencies": {
+    "@panates/eslint-config": "^2.4.0",
+    "@panates/eslint-config-ts": "^2.4.0",
+    "@panates/rman-preset": "^2.2.2",
+    "@panates/tsconfig": "^2.1.8",
+    "@swc-node/register": "^1.12.1",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^26.6.6",
+    "c8": "^12.0.0",
+    "globals": "^17.14.0",
+    "mocha": "^12.0.3",
+    "typescript": "^6.0.3"
+  }
+}

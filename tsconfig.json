@@ -1,0 +1,7 @@
+{
+  "include": ["./packages", "./support", "./"],
+  "exclude": ["node_modules", "build", "coverage", "docs"],
+  "compilerOptions": {
+    "noEmit": true
+  }
+}

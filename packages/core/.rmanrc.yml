@@ -1,0 +1,4 @@
+# Settings shared by the packages in this group directory.
+
+# The packages here form one version group and release together.
+group: core
