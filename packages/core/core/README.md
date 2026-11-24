@@ -19,7 +19,7 @@ Parses, builds and serializes ASTM E1394 (LIS2-A2) messages, and runs the ASTM E
 ## Install
 
 ```bash
-npm install @astm-e1394/core
+npm install @astm-e1394/core@beta
 ```
 
 ## Messages

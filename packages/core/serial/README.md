@@ -19,7 +19,7 @@ Connects to laboratory instruments over serial ports for ASTM E1394 messages.
 ## Install
 
 ```bash
-npm install @astm-e1394/core @astm-e1394/serial
+npm install @astm-e1394/core@beta @astm-e1394/serial@beta
 ```
 
 A serial port connection for [`@astm-e1394/core`](https://www.npmjs.com/package/@astm-e1394/core)'s `AstmLink`, which runs the ASTM E1381 (LIS1-A) protocol and the message handlers. The core README describes the link, its handlers and its options. The port is opened with the [serialport](https://www.npmjs.com/package/serialport) package, which comes with prebuilt binaries for the common platforms.
