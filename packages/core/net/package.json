@@ -1,7 +1,7 @@
 {
   "name": "@astm-e1394/net",
   "description": "Connects to laboratory instruments over TCP for ASTM E1394 messages.",
-  "version": "0.0.0",
+  "version": "1.0.0-beta.0",
   "private": true,
   "type": "module",
   "license": "MIT",
