@@ -1,0 +1,45 @@
+{
+  "name": "@astm-e1394/dictionary",
+  "description": "Record and field definitions of ASTM E1394 (LIS2-A2).",
+  "keywords": [
+    "astm",
+    "astm-e1394",
+    "e1394",
+    "lis2-a2",
+    "lis",
+    "lims",
+    "laboratory",
+    "clinical-laboratory",
+    "analyzer",
+    "instrument",
+    "medical-device",
+    "dictionary",
+    "records",
+    "fields"
+  ],
+  "version": "1.0.0-beta.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/panates/astm-e1394.git",
+    "directory": "packages/core/dictionary"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "expect": "^30.5.2"
+  }
+}

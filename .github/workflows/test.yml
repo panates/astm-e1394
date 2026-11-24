@@ -1,0 +1,53 @@
+name: Test
+on:
+  # release.yml runs the tests before a release
+  workflow_call:
+
+  # Can be run manually
+  workflow_dispatch:
+
+  # Every push but to main, which gets its tests from release.yml
+  push:
+    branches-ignore:
+      - main
+
+# This workflow only reads the repository
+permissions:
+  contents: read
+
+# Only one run per branch at a time
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    # A push whose commit message says no-test skips the tests
+    if: >
+      github.event_name != 'push' ||
+      !contains(github.event.head_commit.message, 'no-test')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # Checks the repository out, installs what the lockfile pins and puts rman on the PATH
+      - name: Setup Environment
+        uses: panates/gh-setup-node@v2
+        with:
+          node-version: '24'
+          rman-version: '2'
+          install: 'ci'
+
+      - name: Run linter test
+        run: rman lint
+
+      - name: Run circular dependency test
+        run: rman check
+
+      - name: Run unit tests
+        run: pnpm run citest
+
+      # The coverage badge reads Coveralls
+      - name: Send coverage to Coveralls
+        uses: coverallsapp/github-action@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}

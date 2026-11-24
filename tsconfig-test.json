@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig-base.json",
+  "include": ["./packages/*/*/test/**/*.*", "./packages/*/*/src/**/*.*"],
+  "compilerOptions": {
+    "types": ["node", "mocha"],
+    "composite": false,
+    "incremental": false,
+    "paths": {
+      "@astm-e1394/core": ["./packages/core/core/src/index.js"],
+      "@astm-e1394/dictionary": ["./packages/core/dictionary/src/index.js"],
+      "@astm-e1394/net": ["./packages/core/net/src/index.js"],
+      "@astm-e1394/serial": ["./packages/core/serial/src/index.js"]
+    }
+  }
+}

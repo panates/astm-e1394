@@ -1,0 +1,18 @@
+extends: '@panates/rman-preset'
+
+# Install, sync the lockfile and publish with pnpm.
+packageManager:
+  node: pnpm
+
+# Each group directory names its version group in its own .rmanrc.yml. The packages of one
+# group release together; the groups release independently.
+version:
+  # Bump every package in the group, not only the ones that changed.
+  cascade: group
+  # Releases are betas (1.0.0-beta.N, npm dist-tag "beta") until this line is removed for 1.0.0;
+  # then drop "@beta" from the install lines of the READMEs.
+  preid: beta
+
+changelog:
+  # One changelog per group.
+  groupBy: group
