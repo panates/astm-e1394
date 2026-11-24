@@ -19,7 +19,7 @@ Record and field definitions of ASTM E1394 (LIS2-A2).
 ## Install
 
 ```bash
-npm install @astm-e1394/dictionary@beta
+npm install @astm-e1394/dictionary
 ```
 
 `@astm-e1394/core` installs it and exports everything it has.

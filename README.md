@@ -30,7 +30,7 @@ The packages are not published yet. They release together, under one version.
 ## Quick start
 
 ```bash
-npm install @astm-e1394/core@beta @astm-e1394/net@beta
+npm install @astm-e1394/core @astm-e1394/net
 ```
 
 ```typescript
