@@ -1,5 +1,17 @@
 # Changelog
-<!-- rman:documented-up-to 3c54b718c03bb212d523efa66b716859c2d3ef7d -->
+<!-- rman:documented-up-to fefaf0bfbcc4509473ad7237b1f89eb44a9e216a -->
+
+## v1.0.0-beta.1 (2026-11-24)
+
+### 🐛 Bug Fixes
+
+- add npm keywords to the packages (be64d79)
+
+### 🧹 Chores
+
+- **deps:** refresh the lockfile (b901b9c)
+
+---
 
 ## v1.0.0-beta.0 (2026-11-24)
 
