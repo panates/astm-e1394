@@ -9,9 +9,15 @@ packageManager:
 version:
   # Bump every package in the group, not only the ones that changed.
   cascade: group
-  # Releases are betas (1.0.0-beta.N, npm dist-tag "beta") until this line is removed for 1.0.0;
-  # then drop "@beta" from the install lines of the READMEs.
+  # Releases are betas (1.0.0-beta.N) until this line and publish.npm.latestPrereleases are
+  # removed for 1.0.0.
   preid: beta
+
+publish:
+  npm:
+    # With no stable release yet, each beta is published to "latest" instead of "beta": npm search
+    # and a plain install show the newest one.
+    latestPrereleases: [beta]
 
 changelog:
   # One changelog per group.

@@ -23,6 +23,10 @@ together, under one version. The standard has no versions that change its record
 (E1394-97 and LIS2-A2 lay them out the same way), so there is one dictionary; an instrument's
 own fields and codes go into one made with `dictionary.extend()`, not into the package.
 
+## Handoff
+
+A handoff note between sessions goes to `.claude/local/handoff.md` (git-ignored); a new session reads it first.
+
 ## graphify
 
 This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
